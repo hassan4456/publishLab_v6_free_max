@@ -1,10 +1,19 @@
-import json
-import google.generativeai as genai
+import os, json
+from google import genai
+
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    return _client
 
 
 def write_story(niche, pages=32):
     """يكتب قصة أطفال كاملة (عنوان + وصف + صفحات) عن طريق Gemini، يرجع dict"""
-    m = genai.GenerativeModel('gemini-1.5-flash')
+    client = _get_client()
     prompt = (
         f"Write a children's picture book story, {pages} pages, about: {niche}. "
         "Return ONLY valid JSON, no explanation, no markdown fences, in this exact shape: "
@@ -14,7 +23,7 @@ def write_story(niche, pages=32):
         '"image_prompt": "detailed visual description for an illustrator"}], '
         '"aplus_bullets": ["3 short marketing bullet points about why parents will love this book"]}'
     )
-    r = m.generate_content(prompt)
+    r = client.models.generate_content(model="gemini-3.5-flash", contents=prompt)
     raw = r.text.replace("```json", "").replace("```", "").strip()
     data = json.loads(raw)
     if "pages" not in data or not data["pages"]:
