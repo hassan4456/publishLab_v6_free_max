@@ -108,13 +108,27 @@ async def _handle_generate_all(q, c):
         await q.edit_message_text("⚠️ مفيش قصة محفوظة، ابدأ من الأول بـ /start")
         return
 
-    await q.edit_message_text("🎨 بولد الصور... (ممكن ياخد دقيقة لدقيقتين)")
+    await q.edit_message_text("🎨 بولد الصور... (ممكن ياخد كذا دقيقة)")
     pages = story["pages"]
-    imgs = []
-    for i, pg in enumerate(pages):
-        prompt = pg.get("image_prompt") or pg.get("text", "children book scene")
-        path = await asyncio.to_thread(gen_img, prompt, i)
-        imgs.append(path)
+    imgs = [None] * len(pages)
+    sem = asyncio.Semaphore(4)  # 4 صور مع بعض في نفس الوقت بدل واحدة واحدة
+
+    async def _one(i, pg):
+        async with sem:
+            prompt = pg.get("image_prompt") or pg.get("text", "children book scene")
+            imgs[i] = await asyncio.to_thread(gen_img, prompt, i)
+
+    tasks = [asyncio.create_task(_one(i, pg)) for i, pg in enumerate(pages)]
+    done = 0
+    for t in asyncio.as_completed(tasks):
+        await t
+        done += 1
+        if done % 8 == 0 or done == len(tasks):
+            failed = sum(1 for x in imgs[:done] if x is None) if done == len(tasks) else None
+            msg = f"🎨 اتولدت {done}/{len(tasks)} صورة..."
+            if done == len(tasks) and failed:
+                msg += f"\n⚠️ {failed} صورة فشلت وهتتسيب فاضية في الصفحة بتاعتها"
+            await q.message.reply_text(msg)
 
     await q.message.reply_text("📄 بجمع Interior PDF...")
     interior_path = await asyncio.to_thread(build_interior_pdf, story, imgs)
