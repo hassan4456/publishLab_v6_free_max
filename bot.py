@@ -2,7 +2,6 @@ import os, asyncio, logging
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-import google.generativeai as genai
 
 from agents.niche_scanner import get_hot_niches
 from agents.review_analyzer import analyze
@@ -21,7 +20,6 @@ log = logging.getLogger("publishlab")
 load_dotenv()
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_KEY)
 
 
 # ---------------- Telegram handlers ----------------
